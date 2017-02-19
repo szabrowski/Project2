@@ -92,8 +92,8 @@ for tweet in list_tweets:
     #print (tweet['text'])
     #print (tweet['created_at'])
 
-# print (lst[:3])
-# print (lst1[:3])
+print (lst[:3])
+print (lst1[:3])
 lst = lst[:3]
 lst1 = lst1[:3]
 
@@ -102,6 +102,7 @@ for x in lst:
 	z = lst.index(x)
 	print (lst1[z])
 	#print ('\n')
+
 
 
 #### Recommended order of tasks: ####
