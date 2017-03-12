@@ -120,7 +120,6 @@ lst1 = []
 
 for c in h:
 	v = c.find('h2').text
-	#g = v.split()
 	#print (v)
 	lst1.append(v)
 
