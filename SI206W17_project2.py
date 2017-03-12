@@ -57,11 +57,10 @@ except:
 
 def find_urls(user_input):
 	#reg = r'http?:\/\/[a-zA-Z]{2}(?:\.[a-zA-Z0-9]{2}.)+?''
-	reg = r'https?:\/\/[a-z0-9A-Z]{2,}(?:\.+[a-z0-9A-Z]{2,})+'
+	reg = r'\bhttp://\b\w+\.\S{2}[^\s]+|\bhttps://\b\w+\.\S{2}[^\s]+'
 	list_urls = re.findall(reg, user_input)
 	print (list_urls)
 	return list_urls
-
 
 
 ## PART 2 (a) - Define a function called get_umsi_data.
@@ -71,102 +70,113 @@ def find_urls(user_input):
 ## Reminder: you'll need to use the special header for a request to the UMSI site, like so:
 #### requests.get(base_url, headers={'User-Agent': 'SI_CLASS'}) 
 
-## Start with this page: https://www.si.umich.edu/directory?field_person_firstname_value=&field_person_lastname_value=&rid=All  
-## End with this page: https://www.si.umich.edu/directory?field_person_firstname_value=&field_person_lastname_value=&rid=All&page=11 
-
-
 def get_umsi_data():
-	if len(CACHE_DICTION) is not 0:
-		return CACHE_DICTION
+	UMSI_list = []
+	if 'umsi_directory_data' in CACHE_DICTION:
+		UMSI_list = CACHE_DICTION['umsi_directory_data']
 	else:
-		html_list = []
-		#base_params = {'page': 1}
-		for x in '123456789101':
-			response = requests.get("https://www.si.umich.edu/directory?field_person_firstname_value=&field_person_lastname_value=&rid=All", headers={'User-Agent': 'SI_CLASS'}, params = {'page':x})
-			txt = response.text
-			html_list.append(txt)
-		html_list1 = str(html_list)
+		for x in range(0,12):
+			url = "https://www.si.umich.edu/directory?field_person_firstname_value=&field_person_lastname_value=&rid=All&page=" + str(x)
+			response = requests.get(url, headers = {'User-Agent': 'SI_CLASS'})
+			html = response.text
+			#UMSI_list.append(html)
+			soup = BeautifulSoup(html, 'html.parser')
+			string = str(soup)
+
+			UMSI_list.append(string)
+		CACHE_DICTION['umsi_directory_data'] = UMSI_list
 		f = open(CACHE_FNAME, 'w')
-		f.write(html_list1)
+		f.write(json.dumps(CACHE_DICTION))
 		f.close()
-		return (html_list)
-
-
-###### Problem here. Looks like I am caching all the HTML data not just the strings
-###### IS this wrong???
-###### Maybe Beautiful Soup should come into play here?
-
-
-
-
-
+	# print (CACHE_DICTION['umsi_directory_data'])
+	return (UMSI_list)
 
 
 ## PART 2 (b) - Create a dictionary saved in a variable umsi_titles 
 ## whose keys are UMSI people's names, and whose associated values are those people's titles, e.g. "PhD student" or "Associate Professor of Information"...
-
-#response = requests.get("https://www.si.umich.edu/directory?field_person_firstname_value=&field_person_lastname_value=&rid=All", headers={'User-Agent': 'SI_CLASS'})
-response = get_umsi_data()
-htmldoc = str(response)
-#htmldoc = response.text
-
-soup1 = BeautifulSoup(htmldoc,"html.parser")
-people = soup1.find_all("div",{"class":"views-row"})
+lst_pages = []
 umsi_titles = {}
+names = []
+job = []
 
-h = soup1.find_all(property = 'dc:title')
-#print (h)
-lst1 = []
+for x in range(0,12):
+	url = "https://www.si.umich.edu/directory?field_person_firstname_value=&field_person_lastname_value=&rid=All&page=" + str(x)
+	response = requests.get(url, headers = {'User-Agent': 'SI_CLASS'})
+	html = response.text
+	soup1 = BeautifulSoup(html,"html.parser")
+	people = soup1.find_all("div",{"class":"views-row"})
+	lst_pages.append(soup1)
+	names.append(people)
+	h = soup1.find_all(property = 'dc:title')
+	lst1 = []
+	lst2 = []
+	for c in h:
+		v = c.find('h2').text
+		lst1.append(v)
+	people = soup1.find_all("div",{"class":"views-row"})
+	for er in people:
+		titl = er.find_all(class_="field field-name-field-person-titles field-type-text field-label-hidden")
+		for grade in titl:
+			col = grade.find(class_="field-item even").text
+			#print(col)
+			#n = col.split()
+			lst2.append(col)
+	for x in lst1:
+		z = lst1.index(x)
+		#print (z)
+		m = lst2[z]
+		#print (m)
+		umsi_titles[x] = m
 
-for c in h:
-	v = c.find('h2').text
-	#print (v)
-	lst1.append(v)
 
-
-lst2 = []
-
-people = soup1.find_all("div",{"class":"views-row"})
-for er in people:
-	titl =er.find_all(class_="field field-name-field-person-titles field-type-text field-label-hidden")
-	for grade in titl:
-		col = grade.find(class_="field-item even").text
-		#print(col)
-		#n = col.split()
-		lst2.append(col)
-
-#print (lst2)
-
-# Grab the text of each of those elements and put them in the dictionary umsi_titles properly
-
-for x in lst1:
-	z = lst1.index(x)
-	#print (z)
-	m = lst2[z]
-	#print (m)
-	umsi_titles[x] = m
+	# print (lst1)
+	# print (lst2)
 
 print (umsi_titles)
-
-
+#print (people)
 
 ## PART 3 (a) - Define a function get_five_tweets
 ## INPUT: Any string
 ## Behavior: See instructions. Should search for the input string on twitter and get results. Should check for cached data, use it if possible, and if not, cache the data retrieved.
 ## RETURN VALUE: A list of strings: A list of just the text of 5 different tweets that result from the search.
 
-
+def get_five_tweets(input_string):
+	returnedList = []
+	if input_string in CACHE_DICTION:
+		returnedList = CACHE_DICTION[input_string]
+	else:
+		search_results = api.search(input_string)       
+		string = json.dumps(search_results)
+		json_x = json.loads(string)
+		final_dict ={}
+		for i in json_x["statuses"]:
+			final_dict[i['text']] = i['user']['created_at']
+		for k in final_dict:
+			returnedList.append(k)
+		CACHE_DICTION["twitter_University of Michigan"] = returnedList      
+		f = open(CACHE_FNAME, 'w')
+		f.write(json.dumps(CACHE_DICTION))
+		f.close()
+	return returnedList[:5]
 
 
 ## PART 3 (b) - Write one line of code to invoke the get_five_tweets function with the phrase "University of Michigan" and save the result in a variable five_tweets.
 
 
 
+five_tweets = get_five_tweets("University of Michigan")
 
 ## PART 3 (c) - Iterate over the five_tweets list, invoke the find_urls function that you defined in Part 1 on each element of the list, and accumulate a new list of each of the total URLs in all five of those tweets in a variable called tweet_urls_found. 
 
 
 
+
+tweet_urls_found = []
+for z in five_tweets:
+	one = find_urls(z)
+	for m in one:
+		tweet_urls_found.append(m)
+print(tweet_urls_found)
 
 
 ########### TESTS; DO NOT CHANGE ANY CODE BELOW THIS LINE! ###########
