@@ -132,7 +132,7 @@ for x in range(0,12):
 	# print (lst1)
 	# print (lst2)
 
-print (umsi_titles)
+#print (umsi_titles)
 #print (people)
 
 ## PART 3 (a) - Define a function get_five_tweets
@@ -145,9 +145,11 @@ def get_five_tweets(input_string):
 	if input_string in CACHE_DICTION:
 		returnedList = CACHE_DICTION[input_string]
 	else:
-		search_results = api.search(input_string)       
+		search_results = api.search(input_string)
 		string = json.dumps(search_results)
+		#print (string)
 		json_x = json.loads(string)
+		#print (json_x)
 		final_dict ={}
 		for i in json_x["statuses"]:
 			final_dict[i['text']] = i['user']['created_at']
